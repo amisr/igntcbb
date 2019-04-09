@@ -1,4 +1,4 @@
-# IGNTCBB #
+# IG-NTC-BB #
 A package for polling and parsing the registers of a [ComAp IG-NTC-BB Genset Controller](https://www.comap-control.com/products/detail/inteligen-ntc-basebox)
 ### Installation ###
 
