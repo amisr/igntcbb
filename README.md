@@ -34,7 +34,7 @@ Instead, you will likely be wanting to use the `IGNTCModbusReadRegisters` class
     genconfig_file = 'file_from_genconfig_export.txt'
     host = 'ip address of host'
     port = 502  # this is the default value
-    igntc = IGNTCModbusReadRegisters(genconfig,host,port=port)
+    igntc = IGNTCModbusReadRegisters(genconfig_file,host,port=port)
     # let's query 1 register from the "Info" group
     register = igntc.query_parameter('Info','SW version')
     # result is a "register" object. All information that we want is in a .params attribute:
