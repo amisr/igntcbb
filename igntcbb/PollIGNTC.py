@@ -27,7 +27,7 @@ from pymodbus.constants import Endian
 import math
 import time
 
-from ParseGenConfig import ParseGenConfig
+from .ParseGenConfig import ParseGenConfig
 
 
 # For documentation, see IGS-NT-Communication-Guide-11-2017.pdf
