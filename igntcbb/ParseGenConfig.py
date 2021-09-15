@@ -10,6 +10,9 @@
 #   2018-09-26  Ashton Reimer
 #               Operations ready version
 #
+#   2021-09-14  Ashton Reimer
+#               Updating documentation
+#
 #   Description: Provides a ParseGenConfig class that can read a GenConfig
 #                file and creates an object with registers and custom
 #                types that can be used with pymodbus to read and parse
@@ -18,21 +21,68 @@
 ##########################################################################
 
 class ParseGenConfig():
+    """A class for polling and parsing the registers of a ComAp IG-NTC-BB
+    Genset Controller via Modbus TCP.
+
+    Attributes
+    ==========
+    filename : string
+        The path to a text file containing register information. The text file
+        is produced using ComAp's GenConfig software.
+    registers : list
+        A list of dictionaries, where each dictionary defines a register parsed
+        from the genset config file. Each dictionary has the following keys:
+        'register', 'comm_obj', 'name', 'units', 'datatype', 'points',
+        'decimals', 'min', 'max', 'group'.
+    custom_types : list
+        A list of dictionaries, where each dictionary defines a custom type
+        that was parsed from the genset config file. Each dictionary contains
+        a type map, which maps register values to whatever the type requires.
+
+    Examples
+    ========
+    ::
+
+        genconfig_file = 'file_from_genconfig_export.txt'
+        pgc = ParseGenConfig(genconfig_file)
+        # now you have access to all of the registers and custom types via:
+        registers = pgc.registers
+        custom_types = pgc.custom_types
+
+    """
     def __init__(self,filename):
         self.filename = filename
 
+        # parse the genset register map text file
         registers, custom_types = self.parse()
 
         self.registers = registers
         self.custom_types = custom_types
 
-    def parse(self):
 
+    def parse(self):
+        """Read and parse the genset register map file.
+
+        Returns
+        =======
+            registers : list
+                A list of dictionaries, where each dictionary defines a
+                register parsed from the genset config file. Each dictionary
+                has the following keys: 'register', 'comm_obj', 'name',
+                'units', 'datatype', 'points', 'decimals', 'min', 'max',
+                'group'.
+            custom_types : list
+                A list of dictionaries, where each dictionary defines a custom
+                type that was parsed from the genset config file. Each
+                dictionary contains a type map, which maps register values to
+                whatever the type requires.
+
+        """
         with open(self.filename,'r') as f:
             contents = f.readlines()
 
-
-        # Start by reading and parsing all of the registers
+        # start by reading and parsing all of the registers and creating a
+        # list of all these registers
         line_num = 2 # skip the registers header
         registers = list()
         while True:
@@ -49,20 +99,24 @@ class ParseGenConfig():
 
             line_num += 1
 
-        # Some registers have min/max values that are defined by other registers so find and clean that up
+        # some registers have min/max values that are defined by other
+        # registers so find and clean that up
         registers = self.reparse_min_max_values(registers)
 
-        # Skip the Register      Protection #2     Protection #1   part of the file for now. Maybe support in future
-        line_num += 10  # skip a few lines to jump past the header for the protection registers.
+        # skip the Register      Protection #2     Protection #1   part of the
+        # file for now, maybe support in future
+        line_num += 10  # skip a few lines to jump past the header for the
+                        # protection registers.
 
-        # Now search for the custom type definitions. Search for '=======' and check for the same on the second line after
-        # For example, looking for the following:
+        # now search for the custom type definitions, search for '=======' and
+        # check for the same on the second line after
+        # for example, looking for the following:
         #
         # ======================================================================================
         # List# Types Meaning
         # ======================================================================================
         #
-        # And trying to match to the equals signs
+        # and trying to match to the equals signs
 
         searching_for_equals = True
         while searching_for_equals:
@@ -76,11 +130,10 @@ class ParseGenConfig():
             line_num += 1
 
 
-        # Now start parsing the custom types. Use a helper function
+        # now start parsing the custom type using a helper function
         custom_types = dict()
         parsing_custom_types = True
         while parsing_custom_types:
-            # look for the next custom type definition
             new_custom_type, new_line_num = self.find_and_parse_type(line_num, contents)
             line_num = new_line_num
 
@@ -94,7 +147,23 @@ class ParseGenConfig():
 
 
     def parse_register(self, line):
-        # Expecting lines like (between the ||):
+        """A helper function for parsing register parameters from a line of the
+        genset register map file.
+
+        Parameters
+        ==========
+        line : string
+            A line of text from a genset register map file.
+
+        Returns
+        =======
+            parsed_register : dict
+                A dictionary with the following keys: 'register', 'comm_obj',
+                'name', 'units', 'datatype', 'points', 'decimals', 'min',
+                'max', 'group'.
+
+        """
+        # given a line like so (the content between the | and |):
         #  Register(s)      Com.Obj. Name           Dim  Type       Len Dec   Min    Max Group
         # |40003            8235     BIN                 Binary#1    2   -      -      - Bin inputs CU |
         #  ^               ^        ^              ^    ^          ^   ^  ^      ^      ^
@@ -143,7 +212,24 @@ class ParseGenConfig():
 
         return parsed_register
 
+
     def reparse_min_max_values(self, registers):
+        """A helper function for reparsing the min/max values for registers.
+        Some of the registers min/max values depend on other registers. This
+        function just uses the min or max value of the other register, but
+        ideally, it should use the value of that register instead.
+
+        Parameters
+        ==========
+        registers : list
+            A list of dictionaries of parsed registers.
+
+        Returns
+        =======
+        registers : dict
+            A list of dictionaries of parsed registers.
+
+        """
         comm_objs = [x['comm_obj'] for x in registers]
 
         for register in registers:
@@ -177,26 +263,47 @@ class ParseGenConfig():
 
 
     def find_and_parse_type(self, line_num, contents):
+        """A helper function for reparsing the min/max values for registers.
+        Some of the registers min/max values depend on other registers. This
+        function just uses the min or max value of the other register, but
+        ideally, it should use the value of that register instead.
+
+        Parameters
+        ==========
+        line_num : integer
+
+        contents : list
+
+        registers : list
+            A list of dictionaries of parsed registers.
+
+        Returns
+        =======
+        registers : dict
+            A list of dictionaries of parsed registers.
+
+        """
         # search for this pattern
         # --------------------------------------------------------------------------------------
         # List#1
-
+        #
         # Value  Name
         # --------------------------------------------------------------------------------------------
         #
         # and also "Bit  Name" instead of "Value Name"
         #
-        # Could use regular expressions to match things, for now just loop.
+        # we could use regular expressions to match things, but the following
+        # works just fine
 
         parsed_type = dict()
         valid_headers = ['Bit  Name','Value  Name']
         while True:
-            # check for end of custom type definitions
+            # loop until we hit the end of the custom type definitions
             end_line = contents[line_num].replace('\r\n','')
             if end_line == 'Table# Types Meaning':
                 return None, line_num
 
-            # if not, find the type name and value map
+            # if not at the end, find the type name and value map
             line1 = contents[line_num].replace('\r','')[0:11]
             line2 = contents[line_num+3].replace('\r\n','')
             line3 = contents[line_num+4].replace('\r','')[0:11]
@@ -218,6 +325,8 @@ class ParseGenConfig():
         # ending lines aren't always consistent, but are one of these
         end_parse_match = ['\r\n','--------------------------------------------------------------------------------------\r\n']
 
+        # build a value map that maps register values to the custom type
+        # defined values
         line_num = start_parsing_line_num
         value_map = dict()
         while True:
@@ -235,6 +344,7 @@ class ParseGenConfig():
         parsed_type[type_name] = value_map
 
         return parsed_type, line_num
+
 
 
 if __name__ == '__main__':
