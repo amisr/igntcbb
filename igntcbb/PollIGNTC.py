@@ -8,6 +8,10 @@
 #               Initial implementation (based on Todd's shark200 code)
 #   2018-09-26  Ashton Reimer
 #               Ops ready version
+#   2021-09-15  Ashton Reimer
+#               Fixed decoding bug
+#               Improved 'List#' type decoding
+#               Disable validation for 'List#' types
 #
 #   Description:
 #       The read code works in 2 steps: 1) parse a GenConfig file to 
@@ -72,13 +76,13 @@ class Register():
 
         # use a datatype mapping? If statements are good for now...
         if datatype == 'Integer' and length == 1:
-            value = decoder.decode_8bit_int()
+            value = decoder.decode_16bit_int()
         if datatype == 'Integer' and length == 2:
             value = decoder.decode_16bit_int()
         if datatype == 'Integer' and length == 4:
             value = decoder.decode_32bit_int()
         if datatype == 'Unsigned' and length == 1:
-            value = decoder.decode_8bit_uint()
+            value = decoder.decode_16bit_uint()
         if datatype == 'Unsigned' and length == 2:
             value = decoder.decode_16bit_uint()
         if datatype == 'Unsigned' and length == 4:
@@ -109,8 +113,7 @@ class Register():
 
             if 'list' in datatype:
                 key = decoded
-                self.params['value'] = key
-                self.params['units'] = self.typemap[key]  # for now abuse the units field
+                self.params['value'] = '%s: %s' % (key, self.typemap[key])
         else:
             self.params['value'] = value
 
@@ -121,6 +124,14 @@ class Register():
     def validate(self):
         if self.params['value'] is None:
             return None
+
+        # hack for "List#" datatypes, we don't actually want
+        # to validate them
+        datatype = self.params['datatype']
+        if 'list' in datatype:
+            return True
+
+        # for all others, check the min/max values
         if not self.params['min'] is None:
             if self.params['value'] < self.params['min']:
                 return False
